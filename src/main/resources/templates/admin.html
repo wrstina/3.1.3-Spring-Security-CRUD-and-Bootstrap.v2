@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+</head>
+<body class="container" style="margin-top:40px; background:#f8f9fa">
+
+<a href="/logout" class="btn btn-danger pull-right">Logout</a>
+<h2>Admin Panel</h2>
+
+<!-- Add User -->
+<form th:action="@{/admin/users/create}" th:object="${newUser}" method="post" class="form-inline">
+    <input type="text" th:field="*{username}" placeholder="Username" class="form-control">
+    <input type="password" th:field="*{password}" placeholder="Password" class="form-control">
+    <input type="text" th:field="*{name}" placeholder="First Name" class="form-control">
+    <input type="text" th:field="*{lastName}" placeholder="Last Name" class="form-control">
+    <input type="number" th:field="*{age}" placeholder="Age" class="form-control">
+    <select th:field="*{roles}" multiple class="form-control">
+        <option th:each="r : ${roles}" th:value="${r.id}" th:text="${r.name}"></option>
+    </select>
+    <button class="btn btn-success">Add</button>
+</form>
+
+<!-- User Table -->
+<table class="table table-striped" style="margin-top:30px;">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Age</th>
+        <th>Roles</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="user : ${users}">
+        <td th:text="${user.id}"></td>
+        <td th:text="${user.username}"></td>
+        <td th:text="${user.name}"></td>
+        <td th:text="${user.lastName}"></td>
+        <td th:text="${user.age}"></td>
+        <td>
+            <span th:each="r : ${user.roles}" th:text="${r.name}" class="label label-info" style="margin-right:3px;"></span>
+        </td>
+        <td>
+            <form th:action="@{'/admin/users/delete/' + ${user.id}}" method="post" style="display:inline;">
+                <button class="btn btn-danger btn-sm" onclick="return confirm('Delete user?')">Delete</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

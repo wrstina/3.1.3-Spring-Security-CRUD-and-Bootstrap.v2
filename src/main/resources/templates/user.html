@@ -1,11 +1,27 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <title>Spring Security Example</title>
+    <meta charset="UTF-8">
+    <title>User Info</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 </head>
-<body>
-<h1>User, welcome spring boot security page!</h1>
+<body class="container" style="margin-top:40px; background:#f8f9fa">
 
+<a href="/logout" class="btn btn-danger pull-right">Logout</a>
+<h2>User Information</h2>
+
+<table class="table table-bordered">
+    <tr><th>ID</th><td th:text="${user.id}"></td></tr>
+    <tr><th>Username</th><td th:text="${user.username}"></td></tr>
+    <tr><th>First Name</th><td th:text="${user.name}"></td></tr>
+    <tr><th>Last Name</th><td th:text="${user.lastName}"></td></tr>
+    <tr><th>Age</th><td th:text="${user.age}"></td></tr>
+    <tr><th>Roles</th>
+        <td>
+            <span th:each="r : ${user.roles}" th:text="${r.name}" class="label label-info" style="margin-right:3px;"></span>
+        </td>
+    </tr>
+</table>
 
 </body>
 </html>
