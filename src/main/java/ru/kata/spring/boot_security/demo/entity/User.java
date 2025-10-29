@@ -18,7 +18,7 @@ public class User implements UserDetails {
 
     // users.username (UNIQUE, NOT NULL, VARCHAR(50))
     @NotBlank(message = "Username cannot be empty")
-    @Size(min = 3, max = 20, message = "Username must be between 3 and 20 characters long")
+    @Size(min = 3, max = 50, message = "Username must be between 3 and 20 characters long")
     @Pattern(regexp = "^[A-Za-z0-9_]+$", message = "Username can contain only Latin letters, digits, and underscores")
     @Column(nullable = false, unique = true, length = 50)
     private String username;
