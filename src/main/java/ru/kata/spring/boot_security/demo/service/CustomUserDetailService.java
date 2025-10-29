@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import ru.kata.spring.boot_security.demo.repository.UserRepository;
 
 @Service
-public class CustomUserDetailService implements UserDetailsService {
+public class CustomUserDetailService implements UserDetailsService { // отдаёт пользователю детали для Spring Security по username
     private final UserRepository userRepository;
 
     public CustomUserDetailService(UserRepository userRepository) {

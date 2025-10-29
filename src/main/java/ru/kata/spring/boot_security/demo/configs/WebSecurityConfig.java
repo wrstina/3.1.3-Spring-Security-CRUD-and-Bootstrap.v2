@@ -28,16 +28,20 @@ public class WebSecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .userDetailsService(customUserDetailService) //сервис загрузки пользователей
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index").permitAll() // // доступно без аутентификации
+                        .requestMatchers("/", "/index").permitAll() // доступно без аутентификации
                         .requestMatchers("/admin/**", "/api/users/**").hasRole("ADMIN") // только для ADMIN
-                        .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN") // для USER и ADMIN
-                        .anyRequest().authenticated() // // все остальные запросы требуют аутентификации
+                        .requestMatchers("/user/").hasAnyRole("USER", "ADMIN") // для USER и ADMIN
+                        .anyRequest().authenticated() // все остальные запросы требуют аутентификации
                 )
                 .formLogin(form -> form
-                        .successHandler(successUserHandler) // // используем кастомный обработчик успешного входа
+                        .successHandler(successUserHandler) // используем кастомный обработчик успешного входа
                         .permitAll()
                 )
-                .logout(logout -> logout.permitAll());
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/login?logout")
+                        .permitAll()
+                );
 
         return http.build();
     }

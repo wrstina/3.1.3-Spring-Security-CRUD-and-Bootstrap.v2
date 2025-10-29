@@ -27,7 +27,8 @@ public class UserServiceImpl implements UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    private Set<Role> resolveRoles(Set<Role> roles) { // преобразует роли из формы в реальные роли из БД
+    // преобразует роли из формы (по имени) в реальные роли из бд
+    private Set<Role> resolveRoles(Set<Role> roles) {
         if (roles == null || roles.isEmpty()) {
             return Set.of(roleService.getRoleByName("ROLE_USER"));
         }
@@ -55,25 +56,31 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User createUser(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));  // шифруем пароль
-        user.setRoles(resolveRoles(user.getRoles())); // устанавливаем роли
-        return userRepository.save(user); // сохраняем в бд
+        user.setPassword(passwordEncoder.encode(user.getPassword())); // шифруем пароль
+        user.setRoles(resolveRoles(user.getRoles()));                 // резолвим роли по имени
+        return userRepository.save(user);
     }
 
     @Override
     public User updateUser(Long id, User updatedUser) {
-        User existing = getUserById(id); // находим существующего пользователя
-        existing.setName(updatedUser.getName());
-        existing.setLastName(updatedUser.getLastName());
-        existing.setAge(updatedUser.getAge());
-        existing.setUsername(updatedUser.getUsername());
+        User existing = getUserById(id); // находим если существует по id
 
+        // базовые поля для обновления из бд
+        existing.setUsername(updatedUser.getUsername());
+        existing.setEmail(updatedUser.getEmail());
+        existing.setAge(updatedUser.getAge());
+
+        // пароль меняем только если пришёл новый и непустой
         if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
-            existing.setPassword(passwordEncoder.encode(updatedUser.getPassword())); // шифрует новый пароль
+            existing.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         }
 
-        existing.setRoles(resolveRoles(updatedUser.getRoles()));
-        return userRepository.save(existing); // сохраняем изменения в бд
+        // роли: если не пришли — оставляем прежние; если пришли — резолвим по имени
+        if (updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty()) {
+            existing.setRoles(resolveRoles(updatedUser.getRoles()));
+        }
+
+        return userRepository.save(existing); // сохраняем изменения
     }
 
     @Override
