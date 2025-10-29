@@ -23,7 +23,7 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    // users.password (NOT NULL, VARCHAR(100)); валидируем как raw или bcrypt
+    // users.password (NOT NULL, VARCHAR(100)); валидируем как bcrypt
     @NotBlank(message = "Password cannot be empty")
     @Size(min = 8, message = "Password must be at least 8 characters long")
     @Pattern(
@@ -39,7 +39,7 @@ public class User implements UserDetails {
     @Column(length = 100)
     private String email;
 
-    // users.age (NULLABLE INT) — оставим без @NotNull, можно не заполнять
+    // users.age (NULLABLE INT)
     @Min(value = 1, message = "Age must be > 0")
     @Max(value = 120, message = "Age must not exceed 120")
     @Column
