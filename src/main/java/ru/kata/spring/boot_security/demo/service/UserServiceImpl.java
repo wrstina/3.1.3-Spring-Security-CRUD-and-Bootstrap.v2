@@ -1,19 +1,23 @@
 package ru.kata.spring.boot_security.demo.service;
 
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.kata.spring.boot_security.demo.dto.UserCreateDto;
+import ru.kata.spring.boot_security.demo.dto.UserUpdateDto;
 import ru.kata.spring.boot_security.demo.entity.Role;
 import ru.kata.spring.boot_security.demo.entity.User;
 import ru.kata.spring.boot_security.demo.repository.UserRepository;
 
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
     private final RoleService roleService;
@@ -27,67 +31,101 @@ public class UserServiceImpl implements UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // преобразует роли из формы (по имени) в реальные роли из бд
-    private Set<Role> resolveRoles(Set<Role> roles) {
-        if (roles == null || roles.isEmpty()) {
-            return Set.of(roleService.getRoleByName("ROLE_USER"));
-        }
-        return roles.stream()
-                .map(r -> roleService.getRoleByName(r.getName()))
-                .collect(Collectors.toSet());
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NoSuchElementException("User not found with id: " + id));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+                .orElseThrow(() -> new NoSuchElementException("User not found: " + username));
     }
 
     @Override
-    public User createUser(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword())); // шифруем пароль
-        user.setRoles(resolveRoles(user.getRoles()));                 // резолвим роли по имени
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsernameIgnoreCase(username);
+    }
+
+    @Override
+    public User createUser(UserCreateDto userDto) {
+        // Проверка уникальности username
+        if (existsByUsername(userDto.getUsername())) {
+            throw new IllegalArgumentException("Username already exists: " + userDto.getUsername());
+        }
+
+        // Получаем роли по IDs
+        Set<Role> roles = resolveRolesByIds(userDto.getRoleIds());
+        if (roles.isEmpty()) {
+            roles = Set.of(roleService.getRoleByName("ROLE_USER"));
+        }
+
+        // Создаем пользователя
+        User user = new User();
+        user.setUsername(userDto.getUsername());
+        user.setPassword(passwordEncoder.encode(userDto.getPassword()));
+        user.setEmail(userDto.getEmail());
+        user.setAge(userDto.getAge());
+        user.setRoles(roles);
+
         return userRepository.save(user);
     }
 
     @Override
-    public User updateUser(Long id, User updatedUser) {
-        User existing = getUserById(id); // находим если существует по id
+    public User updateUser(Long id, UserUpdateDto userDto) {
+        User existingUser = getUserById(id);
 
-        // базовые поля для обновления из бд
-        existing.setUsername(updatedUser.getUsername());
-        existing.setEmail(updatedUser.getEmail());
-        existing.setAge(updatedUser.getAge());
+        // Обновляем базовые поля
+        existingUser.setUsername(userDto.getUsername());
+        existingUser.setEmail(userDto.getEmail());
+        existingUser.setAge(userDto.getAge());
 
-        // пароль меняем только если пришёл новый и непустой
-        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
-            existing.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+        // Обновляем пароль если указан
+        if (userDto.getPassword() != null && !userDto.getPassword().isBlank()) {
+            existingUser.setPassword(passwordEncoder.encode(userDto.getPassword()));
         }
 
-        // роли: если не пришли — оставляем прежние; если пришли — резолвим по имени
-        if (updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty()) {
-            existing.setRoles(resolveRoles(updatedUser.getRoles()));
+        // Обновляем роли если указаны
+        if (userDto.getRoleIds() != null) {
+            Set<Role> roles = resolveRolesByIds(userDto.getRoleIds());
+            existingUser.setRoles(roles);
         }
 
-        return userRepository.save(existing); // сохраняем изменения
+        return userRepository.save(existingUser);
     }
 
     @Override
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found");
+            throw new NoSuchElementException("User not found with id: " + id);
         }
         userRepository.deleteById(id);
+    }
+
+    private Set<Role> resolveRolesByIds(List<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        return roleIds.stream()
+                .map(roleService::getRoleById)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 }

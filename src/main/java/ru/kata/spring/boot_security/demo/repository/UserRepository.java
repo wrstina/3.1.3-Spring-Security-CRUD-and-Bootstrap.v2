@@ -5,5 +5,6 @@ import ru.kata.spring.boot_security.demo.entity.User;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByUsername(String username); // поиск пользователя по имени
+    Optional<User> findByUsername(String username);
+    boolean existsByUsernameIgnoreCase(String username);
 }
