@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <title>Admin Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link
-            rel="stylesheet"
-            href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <style>
         body { background:#f8f9fa; padding-top:30px; }
         .section { background:#fff; padding:15px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.08); margin-bottom:20px; }
         .form-inline .form-control { margin-right:8px; margin-bottom:8px; }
         .role-badge { margin-right:4px; }
+        .row-edit { background:#f9fbff; }
     </style>
 </head>
 <body class="container">
@@ -21,27 +23,24 @@
     <h2>Админ-панель</h2>
 </div>
 
-<!-- Сообщения об успехе/ошибке -->
+<!-- Сообщения -->
 <div th:if="${param.err}" class="alert alert-danger">
-    <span th:switch="${param.err}">
-      <span th:case="'username'">Пользователь с таким username уже существует.</span>
-      <span th:case="'dup'">Нарушение уникальности username. Выберите другое имя.</span>
-      <span th:case="*">Ошибка при выполнении операции.</span>
-    </span>
+  <span th:switch="${param.err}">
+    <span th:case="'username'">Пользователь с таким username уже существует.</span>
+    <span th:case="'dup'">Нарушение уникальности username. Выберите другое имя.</span>
+    <span th:case="*">Ошибка при выполнении операции.</span>
+  </span>
 </div>
-<div th:if="${param.ok}" class="alert alert-success">
-    Операция выполнена успешно.
-</div>
+<div th:if="${param.ok}" class="alert alert-success">Операция выполнена успешно.</div>
 
-<!-- СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ (без предзаполнения полей) -->
+<!-- СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ -->
 <div class="section">
     <h3 style="margin-top:0;">Создать пользователя</h3>
 
-    <!-- autocomplete=off; добавлены "ловушки" для автофилла браузера -->
-    <form th:action="@{/admin/users/create}" method="post" class="form-inline"
+    <!-- Должно совпадать с @PostMapping("/users") -->
+    <form th:action="@{/admin/users}" method="post" class="form-inline"
           autocomplete="off" autocapitalize="none" spellcheck="false">
 
-        <!-- ловушки для автофилла (не имеют имён полей сущности) -->
         <input type="text" style="display:none" aria-hidden="true">
         <input type="password" style="display:none" aria-hidden="true">
 
@@ -57,42 +56,16 @@
         <input name="age" type="number" placeholder="Age"
                class="form-control" min="0" autocomplete="off">
 
-        <!-- Роли по ИМЕНИ -->
+        <!-- Роли по ИМЕНИ — совпадает с контроллером (roleNames) -->
         <select name="roleNames" multiple class="form-control" size="2" title="Роли" autocomplete="off">
-            <option th:each="r : ${roles}" th:value="${r.name}" th:text="${r.name}"></option>
+            <option th:each="r : ${allRoles}" th:value="${r.name}" th:text="${r.name}"></option>
         </select>
 
         <button class="btn btn-success">Добавить</button>
     </form>
 </div>
 
-<!-- РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ (на этой же странице) -->
-<div class="section" th:if="${editUser != null}">
-    <h3 style="margin-top:0;">Редактировать пользователя</h3>
-
-    <form th:action="@{'/admin/users/update/' + ${editUser.id}}"
-          th:object="${editUser}" method="post" class="form-inline">
-        <input type="text"     th:field="*{username}" placeholder="Username" class="form-control" required>
-        <!-- Пустой пароль = не менять -->
-        <input type="password" th:field="*{password}" placeholder="Новый пароль (опционально)" class="form-control" autocomplete="new-password">
-        <input type="email"    th:field="*{email}"    placeholder="Email"    class="form-control">
-        <input type="number"   th:field="*{age}"      placeholder="Age"      class="form-control" min="0">
-
-        <!-- Роли по ИМЕНИ -->
-        <select name="roleNames" multiple class="form-control" size="2" title="Роли">
-            <option th:each="r : ${roles}"
-                    th:value="${r.name}"
-                    th:text="${r.name}"
-                    th:selected="${#lists.contains(editUser.roles, r)}">
-            </option>
-        </select>
-
-        <button class="btn btn-primary">Сохранить</button>
-        <a href="/admin" class="btn btn-default">Отмена</a>
-    </form>
-</div>
-
-<!-- ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ -->
+<!-- ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ + ИНЛАЙН-РЕДАКТИРОВАНИЕ -->
 <div class="section">
     <h3 style="margin-top:0;">Пользователи</h3>
     <div class="table-responsive">
@@ -108,7 +81,7 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="u : ${users}">
+            <tr th:each="u, itStat : ${users}">
                 <td th:text="${u.id}"></td>
                 <td th:text="${u.username}"></td>
                 <td th:text="${u.email}"></td>
@@ -117,9 +90,50 @@
                     <span th:each="r : ${u.roles}" th:text="${r.name}" class="label label-info role-badge"></span>
                 </td>
                 <td>
-                    <a th:href="@{'/admin?editId=' + ${u.id}}" class="btn btn-primary btn-sm">Редактировать</a>
-                    <form th:action="@{'/admin/users/delete/' + ${u.id}}" method="post" style="display:inline;">
+                    <!-- Кнопка раскрывает форму редактирования ниже -->
+                    <button class="btn btn-primary btn-sm" type="button"
+                            th:attr="data-target=${'#edit-'+u.id}"
+                            data-toggle="collapse">Редактировать</button>
+
+                    <!-- Удаление: совпадает с @PostMapping('/admin/users/{id}/delete') -->
+                    <form th:action="@{'/admin/users/' + ${u.id} + '/delete'}" method="post" style="display:inline;">
                         <button class="btn btn-danger btn-sm" onclick="return confirm('Удалить пользователя?')">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+
+            <!-- Инлайн-форма редактирования -->
+            <tr th:each="u, itStat : ${users}" th:id="${'edit-'+u.id}" class="collapse row-edit">
+                <td colspan="6">
+                    <!-- Совпадает с @PostMapping('/admin/users/{id}') -->
+                    <form th:action="@{'/admin/users/' + ${u.id}}" method="post" class="form-inline" autocomplete="off">
+                        <input type="hidden" name="id" th:value="${u.id}"/>
+
+                        <input name="username" type="text" placeholder="Username"
+                               class="form-control" required th:value="${u.username}"/>
+
+                        <!-- Пустой пароль = не менять -->
+                        <input name="password" type="password" placeholder="Новый пароль (опционально)"
+                               class="form-control" autocomplete="new-password"/>
+
+                        <input name="email" type="email" placeholder="Email"
+                               class="form-control" th:value="${u.email}"/>
+
+                        <input name="age" type="number" placeholder="Age"
+                               class="form-control" min="0" th:value="${u.age}"/>
+
+                        <!-- Роли по ИМЕНИ — список из allRoles, выбранные — те, что уже у пользователя -->
+                        <select name="roleNames" multiple class="form-control" size="2" title="Роли">
+                            <option th:each="r : ${allRoles}"
+                                    th:value="${r.name}"
+                                    th:text="${r.name}"
+                                    th:selected="${#lists.contains(u.roles, r)}">
+                            </option>
+                        </select>
+
+                        <button class="btn btn-primary">Сохранить</button>
+                        <button class="btn btn-default" type="button"
+                                th:attr="data-target=${'#edit-'+u.id}" data-toggle="collapse">Отмена</button>
                     </form>
                 </td>
             </tr>

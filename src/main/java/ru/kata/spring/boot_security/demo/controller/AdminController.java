@@ -1,110 +1,102 @@
 package ru.kata.spring.boot_security.demo.controller;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import ru.kata.spring.boot_security.demo.entity.Role;
 import ru.kata.spring.boot_security.demo.entity.User;
 import ru.kata.spring.boot_security.demo.service.RoleService;
 import ru.kata.spring.boot_security.demo.service.UserService;
+import ru.kata.spring.boot_security.demo.util.UtilRole;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.security.Principal;
+import java.util.List;
+import java.util.Set;
 
+/**
+ * SRP: контроллер только обрабатывает HTTP и собирает модель.
+ * Конвертация ролей вынесена в UtilRole.
+ */
 @Controller
 @RequestMapping("/admin")
-@RequiredArgsConstructor
 public class AdminController {
 
     private final UserService userService;
     private final RoleService roleService;
+    private final UtilRole utilRole;
+
+    public AdminController(UserService userService, RoleService roleService, UtilRole utilRole) {
+        this.userService = userService;
+        this.roleService = roleService;
+        this.utilRole = utilRole;
+    }
+
+    /** Не даём биндеру писать напрямую в user.roles — собираем роли вручную. */
+    @InitBinder("userForm")
+    public void initBinder(WebDataBinder binder) {
+        binder.setDisallowedFields("roles");
+    }
 
     @GetMapping
-    public String admin(@RequestParam(value = "editId", required = false) Long editId,
-                        Model model) {
-        model.addAttribute("users", userService.getAllUsers());   // таблица пользователей
-        model.addAttribute("roles", roleService.getAllRoles());   // чтобы отрисовать список ролей
-        model.addAttribute("newUser", new User());                // форма создания
-
-        if (editId != null) {
-            model.addAttribute("editUser", userService.getUserById(editId)); // форма редактирования
+    public String adminPage(Model model, Principal principal) {
+        model.addAttribute("users", userService.getAllUsers());
+        model.addAttribute("allRoles", roleService.getAllRoles());
+        model.addAttribute("userForm", new User());
+        if (principal != null) {
+            model.addAttribute("currentUser", userService.getUserByUsername(principal.getName()));
         }
-        return "admin"; // один шаблон admin.html и для списка, и для редактирования
+        return "admin";
     }
 
-    private Set<Role> toRolesFromNames(List<String> roleNames) {
-        if (roleNames == null || roleNames.isEmpty()) {
-            return null;
+    @PostMapping("/users")
+    public String createUser(@ModelAttribute("userForm") User form,
+                             BindingResult binding,
+                             @RequestParam(value = "roleIds", required = false) List<Long> roleIds,
+                             @RequestParam(value = "roleNames", required = false) List<String> roleNames,
+                             Model model, Principal principal) {
+        if (binding.hasErrors()) {
+            // показать страницу без 400
+            model.addAttribute("users", userService.getAllUsers());
+            model.addAttribute("allRoles", roleService.getAllRoles());
+            if (principal != null) {
+                model.addAttribute("currentUser", userService.getUserByUsername(principal.getName()));
+            }
+            return "admin";
         }
-        return roleNames.stream() // конвертируем список ролей из формы в Set<Role> с заполненным name
-                .map(n -> {
-                    Role r = new Role();
-                    r.setName(n);
-                    return r;
-                })
-                .collect(Collectors.toSet());
-    }
+        Set<Role> roles = utilRole.resolveRoles(roleIds, roleNames);
+        form.setRoles(roles);
 
-    private Set<Role> toRolesFromIds(List<Long> roleIds) {
-        if (roleIds == null || roleIds.isEmpty()) {
-            return null;
-        }
-        Map<Long, String> idToName = roleService.getAllRoles().stream()
-                .collect(Collectors.toMap(Role::getId, Role::getName));
-        return roleIds.stream()
-                .map(id -> {
-                    String name = idToName.get(id);
-                    if (name == null) return null; // неизвестный id — пропустим
-                    Role r = new Role();
-                    r.setName(name);
-                    return r;
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-    }
-
-    @PostMapping("/users/create")
-    public String create(@ModelAttribute("newUser") User user,
-                         @RequestParam(value = "roleNames", required = false) List<String> roleNames,
-                         @RequestParam(value = "roleIds", required = false) List<Long> roleIds) {
-
-        Set<Role> roles = toRolesFromNames(roleNames);
-        if (roles == null) {
-            roles = toRolesFromIds(roleIds);
-        }
-        user.setRoles(roles);
-
-        userService.createUser(user);
+        userService.createUser(form);
         return "redirect:/admin";
     }
 
-     //  если передан новый пароль — перешифруется и обновится
-     // если пустой — пароль оставляем прежним
-    @PostMapping("/users/update/{id}")
-    public String update(@PathVariable Long id,
-                         @ModelAttribute User form,
-                         @RequestParam(value = "roleNames", required = false) List<String> roleNames,
-                         @RequestParam(value = "roleIds", required = false) List<Long> roleIds) {
-
-        boolean noRolesProvided = (roleNames == null && roleIds == null);
-
-        if (noRolesProvided) {
-            form.setRoles(userService.getUserById(id).getRoles());
-        } else {
-            Set<Role> roles = toRolesFromNames(roleNames);
-            if (roles == null) {
-                roles = toRolesFromIds(roleIds);
+    @PostMapping("/users/{id}")
+    public String updateUser(@PathVariable("id") Long id,
+                             @ModelAttribute("userForm") User form,
+                             BindingResult binding,
+                             @RequestParam(value = "roleIds", required = false) List<Long> roleIds,
+                             @RequestParam(value = "roleNames", required = false) List<String> roleNames,
+                             Model model, Principal principal) {
+        if (binding.hasErrors()) {
+            model.addAttribute("users", userService.getAllUsers());
+            model.addAttribute("allRoles", roleService.getAllRoles());
+            if (principal != null) {
+                model.addAttribute("currentUser", userService.getUserByUsername(principal.getName()));
             }
-            form.setRoles(roles);
+            return "admin";
         }
+        Set<Role> roles = utilRole.resolveRoles(roleIds, roleNames);
+        form.setId(id);
+        form.setRoles(roles);
 
         userService.updateUser(id, form);
         return "redirect:/admin";
     }
 
-    @PostMapping("/users/delete/{id}")
-    public String delete(@PathVariable Long id) {
+    @PostMapping("/users/{id}/delete")
+    public String deleteUser(@PathVariable("id") Long id) {
         userService.deleteUser(id);
         return "redirect:/admin";
     }
