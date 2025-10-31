@@ -46,7 +46,6 @@ public class WebSecurityConfig {
         return http.build();
     }
 
-
     @Bean
     public PasswordEncoder passwordEncoder() { // хэшируем пароли
         return new BCryptPasswordEncoder();

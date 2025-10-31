@@ -1,31 +1,67 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<html xmlns:th="http://www.thymeleaf.org" lang="ру">
 <head>
     <meta charset="UTF-8">
-    <title>User Profile</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <title>User • Профиль</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { background:#f8f9fa; padding-top:30px; }
-        .card { background:#fff; padding:20px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
-        .role-badge { margin-right:4px; }
-    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container">
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <span class="navbar-brand">User</span>
+        <div class="ms-auto">
+            <a class="btn btn-outline-light btn-sm" href="/logout">Выйти</a>
+        </div>
+    </div>
+</nav>
 
-<div class="clearfix">
-    <a href="/logout" class="btn btn-danger pull-right">Выйти</a>
-    <h2>Личный кабинет</h2>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Ваши данные</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <tbody>
+                            <tr>
+                                <th style="width:25%">ID</th>
+                                <td th:text="${user.id}">1</td>
+                            </tr>
+                            <tr>
+                                <th>Username</th>
+                                <td th:text="${user.username}">user</td>
+                            </tr>
+                            <tr>
+                                <th>Email</th>
+                                <td th:text="${user.email}">user@mail.com</td>
+                            </tr>
+                            <tr>
+                                <th>Age</th>
+                                <td th:text="${user.age}">23</td>
+                            </tr>
+                            <tr>
+                                <th>Roles</th>
+                                <td>
+                  <span th:each="r : ${user.roles}" class="badge bg-info-subtle text-info-emphasis me-1"
+                        th:text="${r.name}">ROLE_USER</span>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3">
+                        <a href="/admin" class="btn btn-outline-primary btn-sm"
+                           th:if="${#authorization.expression('hasRole(''ADMIN'')')}">В админ-панель</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<div class="card">
-    <p><strong>Username:</strong> <span th:text="${user.username}"></span></p>
-    <p><strong>Email:</strong> <span th:text="${user.email}"></span></p>
-    <p><strong>Age:</strong> <span th:text="${user.age}"></span></p>
-    <p><strong>Roles:</strong>
-        <span th:each="r : ${user.roles}" th:text="${r.name}" class="label label-info role-badge"></span>
-    </p>
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

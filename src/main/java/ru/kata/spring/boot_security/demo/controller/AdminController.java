@@ -15,10 +15,9 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Set;
 
-/**
- * SRP: контроллер только обрабатывает HTTP и собирает модель.
- * Конвертация ролей вынесена в UtilRole.
- */
+
+ // SRP: контроллер только обрабатывает HTTP и собирает модель.
+ // Конвертация ролей вынесена в UtilRole.
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
@@ -33,7 +32,7 @@ public class AdminController {
         this.utilRole = utilRole;
     }
 
-    /** Не даём биндеру писать напрямую в user.roles — собираем роли вручную. */
+    // не даём биндеру писать напрямую в user.roles — собираем роли вручную
     @InitBinder("userForm")
     public void initBinder(WebDataBinder binder) {
         binder.setDisallowedFields("roles");
@@ -57,7 +56,6 @@ public class AdminController {
                              @RequestParam(value = "roleNames", required = false) List<String> roleNames,
                              Model model, Principal principal) {
         if (binding.hasErrors()) {
-            // показать страницу без 400
             model.addAttribute("users", userService.getAllUsers());
             model.addAttribute("allRoles", roleService.getAllRoles());
             if (principal != null) {

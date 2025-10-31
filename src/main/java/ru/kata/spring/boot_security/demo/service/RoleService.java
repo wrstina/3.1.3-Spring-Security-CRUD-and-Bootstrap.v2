@@ -7,15 +7,12 @@ import java.util.List;
 
 public interface RoleService {
 
-    /** Вернуть все роли из БД. */
+    // вернуть все роли из бд
     List<Role> getAllRoles();
 
-    /** Найти роль по имени (например, "ROLE_USER"). */
+    // найти роль по имени
     Role getRoleByName(String name);
 
-    /**
-     * Батч-поиск ролей по id. Если каких-то id нет — они просто игнорируются.
-     * Возвращаем именно список ролей, а НЕ int.
-     */
+     // поиск ролей по id. Если каких-то id нет — они игнорируются
     List<Role> findByIds(Collection<Long> ids);
 }

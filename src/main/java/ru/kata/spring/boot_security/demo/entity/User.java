@@ -2,16 +2,20 @@ package ru.kata.spring.boot_security.demo.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Set;
 
+@Setter
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
 
+    @Getter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,18 +38,21 @@ public class User implements UserDetails {
     private String password;
 
     // users.email (NULLABLE, VARCHAR(100))
+    @Getter
     @Email(message = "Email must be valid")
     @Size(max = 100, message = "Email must not exceed 100 characters")
     @Column(length = 100)
     private String email;
 
     // users.age (NULLABLE INT)
+    @Getter
     @Min(value = 1, message = "Age must be > 0")
     @Max(value = 120, message = "Age must not exceed 120")
     @Column
     private int age;
 
     // user_roles (user_id, role_id)
+    @Getter
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
@@ -65,25 +72,11 @@ public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() { return roles; } // возвращает роли пользователя для Spring Security
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
     @Override
     public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
 
     @Override
     public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-
-    public int getAge() { return age; }
-    public void setAge(int age) { this.age = age; }
-
-    public Set<Role> getRoles() { return roles; }
-    public void setRoles(Set<Role> roles) { this.roles = roles; }
 
 
     // методы Spring Security для проверки статуса аккаунта пользователся

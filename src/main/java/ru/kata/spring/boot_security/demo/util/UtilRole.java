@@ -20,7 +20,7 @@ public class UtilRole {
         this.roleService = roleService;
     }
 
-    /** Преобразует коллекцию id -> Set<Role>. Отсутствующие id игнорируются. */
+    // преобразует коллекцию id -> Set<Role>. Отсутствующие id игнорируются
     public Set<Role> rolesFromIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) return Collections.emptySet();
 
@@ -36,7 +36,7 @@ public class UtilRole {
         return out;
     }
 
-    /** Преобразует коллекцию имён -> Set<Role>. Пустые/неизвестные имена игнорируются. */
+    // преобразует коллекцию имён -> Set<Role>. Пустые имена игнорируются
     public Set<Role> rolesFromNames(Collection<String> names) {
         if (names == null || names.isEmpty()) return Collections.emptySet();
 
@@ -51,7 +51,7 @@ public class UtilRole {
         return out;
     }
 
-    /** Универсально: объединяем найденное по id и по имени. */
+    // универсально: объединяем найденное по id и по имени
     public Set<Role> resolveRoles(Collection<Long> roleIds, Collection<String> roleNames) {
         LinkedHashSet<Role> out = new LinkedHashSet<>();
         out.addAll(rolesFromIds(roleIds));
