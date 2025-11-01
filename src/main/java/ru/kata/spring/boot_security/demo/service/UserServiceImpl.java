@@ -6,8 +6,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.kata.spring.boot_security.demo.dto.UserCreateDto;
-import ru.kata.spring.boot_security.demo.dto.UserUpdateDto;
 import ru.kata.spring.boot_security.demo.entity.Role;
 import ru.kata.spring.boot_security.demo.entity.User;
 import ru.kata.spring.boot_security.demo.repository.UserRepository;
@@ -31,101 +29,106 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // Security
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
+                .map(u -> (UserDetails) u)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
+    // Read only
     @Override
     @Transactional(readOnly = true)
-    public List<User> getAllUsers() {
+    public List<User> findAll() {
         return userRepository.findAll();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public User getUserById(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("User not found with id: " + id));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public User getUserByUsername(String username) {
+    public User findByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new NoSuchElementException("User not found: " + username));
     }
 
     @Override
-    public boolean existsByUsername(String username) {
-        return userRepository.existsByUsernameIgnoreCase(username);
+    @Transactional(readOnly = true)
+    public User getById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("User not found, id=" + id));
     }
 
+    // Create/Update/Delete
     @Override
-    public User createUser(UserCreateDto userDto) {
-        // Проверка уникальности username
-        if (existsByUsername(userDto.getUsername())) {
-            throw new IllegalArgumentException("Username already exists: " + userDto.getUsername());
+    public User save(User user) {
+        // регистронезависимая уникальность username при создании/смене
+        if (user.getId() == null && userRepository.existsByUsernameIgnoreCase(user.getUsername())) {
+            throw new IllegalArgumentException("Username already exists: " + user.getUsername());
         }
 
-        // Получаем роли по IDs
-        Set<Role> roles = resolveRolesByIds(userDto.getRoleIds());
-        if (roles.isEmpty()) {
-            roles = Set.of(roleService.getRoleByName("ROLE_USER"));
-        }
+        user.setRoles(normalizeRoles(user.getRoles()));
 
-        // Создаем пользователя
-        User user = new User();
-        user.setUsername(userDto.getUsername());
-        user.setPassword(passwordEncoder.encode(userDto.getPassword()));
-        user.setEmail(userDto.getEmail());
-        user.setAge(userDto.getAge());
-        user.setRoles(roles);
+        // пароль: обязателен при создании; кодируем, если задан
+        if (user.getId() == null) {
+            if (user.getPassword() == null || user.getPassword().isBlank()) {
+                throw new IllegalArgumentException("Password is required");
+            }
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        } else {
+            if (user.getPassword() == null || user.getPassword().isBlank()) {
+                user.setPassword(getById(user.getId()).getPassword());
+            } else {
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
+            }
+        }
 
         return userRepository.save(user);
     }
 
     @Override
-    public User updateUser(Long id, UserUpdateDto userDto) {
-        User existingUser = getUserById(id);
+    public User update(User user) {
+        if (user.getId() == null) throw new IllegalArgumentException("User id is required");
 
-        // Обновляем базовые поля
-        existingUser.setUsername(userDto.getUsername());
-        existingUser.setEmail(userDto.getEmail());
-        existingUser.setAge(userDto.getAge());
+        User existing = getById(user.getId());
 
-        // Обновляем пароль если указан
-        if (userDto.getPassword() != null && !userDto.getPassword().isBlank()) {
-            existingUser.setPassword(passwordEncoder.encode(userDto.getPassword()));
+        // регистронезависимая уникальность username при создании/смене
+        String newUsername = user.getUsername();
+        if (newUsername != null && !newUsername.equalsIgnoreCase(existing.getUsername())
+                && userRepository.existsByUsernameIgnoreCase(newUsername)) {
+            throw new IllegalArgumentException("Username already exists: " + newUsername);
         }
 
-        // Обновляем роли если указаны
-        if (userDto.getRoleIds() != null) {
-            Set<Role> roles = resolveRolesByIds(userDto.getRoleIds());
-            existingUser.setRoles(roles);
+        user.setRoles(normalizeRoles(user.getRoles()));
+
+        // если пароль: пустой — оставляем старый; не пустой — кодируем
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            user.setPassword(existing.getPassword());
+        } else {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
 
-        return userRepository.save(existingUser);
+        return userRepository.save(user);
     }
 
     @Override
-    public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new NoSuchElementException("User not found with id: " + id);
-        }
+    public void deleteById(Long id) {
         userRepository.deleteById(id);
     }
 
-    private Set<Role> resolveRolesByIds(List<Long> roleIds) {
-        if (roleIds == null || roleIds.isEmpty()) {
-            return new HashSet<>();
-        }
+    // helpers
+    private Set<Role> normalizeRoles(Set<Role> roles) {
+        if (roles == null) roles = Collections.emptySet();
 
-        return roleIds.stream()
-                .map(roleService::getRoleById)
+        Set<Role> managed = roles.stream()
+                .filter(Objects::nonNull)
+                .map(r -> r.getId() != null ? roleService.getRoleById(r.getId()) : null)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (managed.isEmpty()) {
+            managed = Set.of(roleService.getRoleByName("ROLE_USER"));
+        }
+        return managed;
     }
 }

@@ -2,52 +2,61 @@ package ru.kata.spring.boot_security.demo.configs;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import ru.kata.spring.boot_security.demo.service.CustomUserDetailService;
 
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
 
     private final SuccessUserHandler successUserHandler;
-    private final CustomUserDetailService customUserDetailService;
 
-    public WebSecurityConfig(SuccessUserHandler successUserHandler, CustomUserDetailService customUserDetailService) {
+    public WebSecurityConfig(SuccessUserHandler successUserHandler) {
         this.successUserHandler = successUserHandler;
-
-        this.customUserDetailService = customUserDetailService;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider(
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider p = new DaoAuthenticationProvider();
+        p.setUserDetailsService(userDetailsService);
+        p.setPasswordEncoder(passwordEncoder);
+        return p;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   DaoAuthenticationProvider authProvider) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .userDetailsService(customUserDetailService) //сервис загрузки пользователей
+                .authenticationProvider(authProvider)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index").permitAll() // доступно без аутентификации
-                        .requestMatchers("/admin/**", "/api/users/**").hasRole("ADMIN") // только для ADMIN
-                        .requestMatchers("/user/").hasAnyRole("USER", "ADMIN") // для USER и ADMIN
-                        .anyRequest().authenticated() // все остальные запросы требуют аутентификации
+                        .requestMatchers("/", "/index", "/login", "/css/**", "/js/**").permitAll()
+                        .requestMatchers("/admin/**", "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers("/user").hasAnyRole("USER", "ADMIN")
+                        .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
-                        .successHandler(successUserHandler) // используем кастомный обработчик успешного входа
+                        .loginPage("/login")
+                        .successHandler(successUserHandler)
                         .permitAll()
                 )
-                .logout(logout -> logout
-                        .logoutUrl("/logout")
+                .logout(l -> l.logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout")
-                        .permitAll()
-                );
-
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll());
         return http.build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() { // хэшируем пароли
-        return new BCryptPasswordEncoder();
     }
 }

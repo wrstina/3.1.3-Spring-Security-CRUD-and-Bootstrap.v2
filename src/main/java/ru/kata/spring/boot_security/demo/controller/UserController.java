@@ -17,7 +17,7 @@ public class UserController {
 
     @GetMapping("/user")
     public String user(Model model, Principal principal) {
-        User current = userService.getUserByUsername(principal.getName()); // просто получаем текущего пользователя и его данные из principal
+        User current = userService.findByUsername(principal.getName()); // просто получаем текущего пользователя и его данные из principal
         model.addAttribute("user", current);
         return "user";
     }

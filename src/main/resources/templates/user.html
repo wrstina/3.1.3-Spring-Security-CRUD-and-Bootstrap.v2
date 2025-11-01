@@ -99,7 +99,7 @@
                                     <span th:each="role, stat : ${user.roles}"
                                           class="badge rounded-pill"
                                           style="background: linear-gradient(135deg, #ff93ac 0%, #ff7a9c 100%); color: white; padding: 0.5rem 1rem;"
-                                          th:text="${role.name}"></span>
+                                          th:text="${role.name.substring(5)}"></span>
                         </td>
                     </tr>
                     </tbody>
@@ -109,7 +109,7 @@
 
         <div class="text-center mt-4">
             <a th:href="@{/logout}" class="btn btn-pink-secondary">
-                ← Back to Login
+                Выйти
             </a>
         </div>
     </div>

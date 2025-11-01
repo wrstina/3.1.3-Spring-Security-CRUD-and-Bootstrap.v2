@@ -8,7 +8,7 @@ import java.util.List;
 
 @Setter
 @Getter
-public class UserUpdateDto {
+public class UserUpdateDto { // нет бизнес-логики: только маршрутизация и сборка модели для представления
 
     @NotBlank(message = "Username cannot be empty")
     private String username;
@@ -31,5 +31,4 @@ public class UserUpdateDto {
         this.age = age;
         this.roleIds = roleIds;
     }
-
 }

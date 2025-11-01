@@ -11,7 +11,7 @@ import java.util.List;
 
 @Setter
 @Getter
-public class UserCreateDto {
+public class UserCreateDto { // нет бизнес-логики: только маршрутизация и сборка модели для представления
 
     @NotBlank(message = "Username cannot be empty")
     @Size(min = 2, max = 50, message = "Username must be between 2 and 50 characters")
