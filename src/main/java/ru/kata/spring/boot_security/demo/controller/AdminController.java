@@ -26,7 +26,6 @@ public class AdminController { // нет бизнес-логики: только
 
     @GetMapping
     public String adminPage(Model model) {
-        // Имена атрибутов оставлены прежними (HTML не меняем)
         model.addAttribute("users", userService.findAll());
         model.addAttribute("roles", roleService.getAllRoles());
         return "admin";
